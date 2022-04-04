@@ -63,13 +63,13 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
   }
 
   @override
-  void dispose() async {
+  void dispose() {
     if (_cameraController != null &&
         _cameraController!.value.isInitialized &&
         !_isControllerDisposed) {
       debugPrint('dispose(): disposing camera controller');
       _isControllerDisposed = true;
-      await _cameraController!.dispose();
+      _cameraController!.dispose();
       _cameraController = null;
     }
     WidgetsBinding.instance!.removeObserver(this);
@@ -77,7 +77,7 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) async {
+  void didChangeAppLifecycleState(AppLifecycleState state) {
     debugPrint('didChangeAppLifecycleState: ${state.toString()}');
     switch (state) {
       case AppLifecycleState.resumed:
@@ -98,7 +98,7 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
             !_isControllerDisposed) {
           debugPrint('didChangeAppLifecycleState: disposing camera controller');
           _isControllerDisposed = true;
-          await _cameraController!.dispose();
+          _cameraController!.dispose();
           _cameraController = null;
         }
         break;
