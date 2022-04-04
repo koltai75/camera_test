@@ -69,7 +69,7 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
         !_isControllerDisposed) {
       debugPrint('dispose(): disposing camera controller');
       _isControllerDisposed = true;
-      _cameraController!.dispose();
+      await _cameraController!.dispose();
       _cameraController = null;
     }
     WidgetsBinding.instance!.removeObserver(this);
@@ -77,12 +77,12 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
   }
 
   @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
+  void didChangeAppLifecycleState(AppLifecycleState state) async {
     debugPrint('didChangeAppLifecycleState: ${state.toString()}');
     switch (state) {
       case AppLifecycleState.resumed:
         if (_isControllerDisposed) {
-          debugPrint('didChangeAppLifecycleState: re-initalizing camera');
+          debugPrint('didChangeAppLifecycleState: re-initializing camera');
           setState(() {
             _isControllerDisposed = false;
             _initalizeCameraFuture = _initializeCamera();
@@ -98,7 +98,7 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
             !_isControllerDisposed) {
           debugPrint('didChangeAppLifecycleState: disposing camera controller');
           _isControllerDisposed = true;
-          _cameraController!.dispose();
+          await _cameraController!.dispose();
           _cameraController = null;
         }
         break;
@@ -142,7 +142,7 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
             enableAudio: false, imageFormatGroup: ImageFormatGroup.jpeg);
         await _cameraController!.initialize();
         debugPrint(
-            '_initializeCamera(): camera controller initalized successfully');
+            '_initializeCamera(): camera controller initialized successfully');
         return Future.value(true);
       } catch (e) {
         return Future.value(false);
