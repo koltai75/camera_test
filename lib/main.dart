@@ -26,6 +26,7 @@ class MyHomePage extends StatefulWidget {
   const MyHomePage({
     Key? key,
   }) : super(key: key);
+
   @override
   State<MyHomePage> createState() => _MyHomePageState();
 }
@@ -52,6 +53,7 @@ class MyCamera extends StatefulWidget {
 class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
   late Future<bool> _initalizeCameraFuture;
   CameraController? _cameraController;
+  bool _isControllerDisposed = false;
 
   @override
   void initState() {
@@ -62,7 +64,11 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
 
   @override
   void dispose() async {
-    if (_cameraController != null && _cameraController!.value.isInitialized) {
+    if (_cameraController != null &&
+        _cameraController!.value.isInitialized &&
+        !_isControllerDisposed) {
+      debugPrint('dispose(): disposing camera controller');
+      _isControllerDisposed = true;
       _cameraController!.dispose();
       _cameraController = null;
     }
@@ -72,18 +78,26 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    debugPrint('didChangeAppLifecycleState: ${state.toString()}');
     switch (state) {
       case AppLifecycleState.resumed:
-        setState(() {
-          _initalizeCameraFuture = _initializeCamera();
-        });
+        if (_isControllerDisposed) {
+          debugPrint('didChangeAppLifecycleState: re-initalizing camera');
+          setState(() {
+            _isControllerDisposed = false;
+            _initalizeCameraFuture = _initializeCamera();
+          });
+        }
         break;
       case AppLifecycleState.inactive:
         break;
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
         if (_cameraController != null &&
-            _cameraController!.value.isInitialized) {
+            _cameraController!.value.isInitialized &&
+            !_isControllerDisposed) {
+          debugPrint('didChangeAppLifecycleState: disposing camera controller');
+          _isControllerDisposed = true;
           _cameraController!.dispose();
           _cameraController = null;
         }
@@ -100,15 +114,15 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
         }
         if (!snapshot.hasData) {
           return const Center(
-              child: Text('No data received from _initalizeCamera.'));
+              child: Text('no data received from _initalizeCamera'));
         }
         if (!snapshot.data!) {
           return const Center(
-              child: Text('Permission to camera was not granted.'));
+              child: Text('permission to camera was not granted'));
         }
         if (_cameraController == null ||
             !_cameraController!.value.isInitialized) {
-          return const Center(child: Text('Camera controller not initalized.'));
+          return const Center(child: Text('camera controller not initalized'));
         }
         return CameraPreview(
           _cameraController!,
@@ -127,6 +141,8 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
         _cameraController = CameraController(cameras[0], ResolutionPreset.high,
             enableAudio: false, imageFormatGroup: ImageFormatGroup.jpeg);
         await _cameraController!.initialize();
+        debugPrint(
+            '_initializeCamera(): camera controller initalized successfully');
         return Future.value(true);
       } catch (e) {
         return Future.value(false);
