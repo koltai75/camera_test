@@ -68,9 +68,7 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
         _cameraController!.value.isInitialized &&
         !_isControllerDisposed) {
       debugPrint('dispose(): disposing camera controller');
-      _isControllerDisposed = true;
-      _cameraController!.dispose();
-      _cameraController = null;
+      _disposeCamera();
     }
     WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
@@ -97,9 +95,7 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
             _cameraController!.value.isInitialized &&
             !_isControllerDisposed) {
           debugPrint('didChangeAppLifecycleState: disposing camera controller');
-          _isControllerDisposed = true;
-          _cameraController!.dispose();
-          _cameraController = null;
+          _disposeCamera();
         }
         break;
     }
@@ -124,9 +120,13 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
             !_cameraController!.value.isInitialized) {
           return const Center(child: Text('camera controller not initalized'));
         }
-        return CameraPreview(
-          _cameraController!,
-        );
+        return _isControllerDisposed
+            ? const Center(
+                child: Text('camera controller '
+                    'is currently disposed'))
+            : CameraPreview(
+                _cameraController!,
+              );
       });
 
   Future<bool> _initializeCamera() async {
@@ -148,5 +148,13 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
         return Future.value(false);
       }
     }
+  }
+
+  void _disposeCamera() {
+    setState(() {
+      _isControllerDisposed = true;
+    });
+    _cameraController!.dispose();
+    _cameraController = null;
   }
 }
