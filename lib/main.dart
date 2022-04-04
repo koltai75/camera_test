@@ -88,7 +88,6 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
         }
         break;
       case AppLifecycleState.inactive:
-        break;
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
         if (_cameraController != null &&
