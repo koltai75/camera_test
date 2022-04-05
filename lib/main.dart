@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:camera/camera.dart';
 
@@ -35,11 +36,18 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Flutter Camera Test'),
-      ),
-      body: const MyCamera(),
-    );
+        appBar: AppBar(
+          title: const Text('Flutter Camera Test'),
+        ),
+        body: Center(
+          child: ElevatedButton(
+              onPressed: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const MyCamera(),
+                  )),
+              child: const Text('Photo')),
+        ));
   }
 }
 
@@ -53,7 +61,7 @@ class MyCamera extends StatefulWidget {
 class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
   late Future<bool> _initalizeCameraFuture;
   CameraController? _cameraController;
-  bool _isControllerDisposed = false;
+  double _progress = 0;
 
   @override
   void initState() {
@@ -64,11 +72,8 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
 
   @override
   void dispose() {
-    if (_cameraController != null &&
-        _cameraController!.value.isInitialized &&
-        !_isControllerDisposed) {
-      debugPrint('dispose(): disposing camera controller');
-      _disposeCamera();
+    if (_cameraController != null && _cameraController!.value.isInitialized) {
+      _cameraController!.dispose();
     }
     WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
@@ -76,25 +81,18 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    debugPrint('didChangeAppLifecycleState: ${state.toString()}');
     switch (state) {
       case AppLifecycleState.resumed:
-        if (_isControllerDisposed) {
-          debugPrint('didChangeAppLifecycleState: re-initializing camera');
-          setState(() {
-            _isControllerDisposed = false;
-            _initalizeCameraFuture = _initializeCamera();
-          });
-        }
+        setState(() {
+          _initalizeCameraFuture = _initializeCamera();
+        });
         break;
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
         if (_cameraController != null &&
-            _cameraController!.value.isInitialized &&
-            !_isControllerDisposed) {
-          debugPrint('didChangeAppLifecycleState: disposing camera controller');
-          _disposeCamera();
+            _cameraController!.value.isInitialized) {
+          _cameraController!.dispose();
         }
         break;
     }
@@ -105,27 +103,48 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
       future: _initalizeCameraFuture,
       builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
+          return Center(
+              child: SizedBox(
+                  width: 100,
+                  height: 100,
+                  child: CircularProgressIndicator(value: _progress)));
         }
+
+        var errorMessage = '';
+
         if (!snapshot.hasData) {
-          return const Center(
-              child: Text('no data received from _initalizeCamera'));
+          errorMessage = 'no data received from _initalizeCamera';
         }
         if (!snapshot.data!) {
-          return const Center(
-              child: Text('permission to camera was not granted'));
+          errorMessage = 'permission to camera was not granted';
         }
         if (_cameraController == null ||
             !_cameraController!.value.isInitialized) {
-          return const Center(child: Text('camera controller not initalized'));
+          errorMessage = 'camera controller not initalized';
         }
-        return _isControllerDisposed
-            ? const Center(
-                child: Text('camera controller '
-                    'is currently disposed'))
-            : CameraPreview(
-                _cameraController!,
-              );
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Flutter Camera Test'),
+          ),
+          body: Center(
+            child: errorMessage.isNotEmpty
+                ? Text(
+                    errorMessage,
+                    textAlign: TextAlign.center,
+                  )
+                : CameraPreview(
+                    _cameraController!,
+                  ),
+          ),
+          persistentFooterButtons: [
+            Center(
+              child: ElevatedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Back')),
+            )
+          ],
+        );
       });
 
   Future<bool> _initializeCamera() async {
@@ -139,21 +158,24 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
       try {
         _cameraController = CameraController(cameras[0], ResolutionPreset.high,
             enableAudio: false, imageFormatGroup: ImageFormatGroup.jpeg);
+
+        final start = DateTime.now().millisecondsSinceEpoch;
+        const waitForSeconds = 3;
+        final timer =
+            Timer.periodic(const Duration(milliseconds: 100), (timer) {
+          setState(() {
+            _progress =
+                (DateTime.now().millisecondsSinceEpoch - start) / (3 * 1000);
+          });
+        });
+
+        await Future.delayed(const Duration(seconds: waitForSeconds));
+        timer.cancel();
         await _cameraController!.initialize();
-        debugPrint(
-            '_initializeCamera(): camera controller initialized successfully');
         return Future.value(true);
       } catch (e) {
         return Future.value(false);
       }
     }
-  }
-
-  void _disposeCamera() {
-    setState(() {
-      _isControllerDisposed = true;
-    });
-    _cameraController!.dispose();
-    _cameraController = null;
   }
 }
