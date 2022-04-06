@@ -56,6 +56,7 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
   CameraController? _cameraController;
   double _progress = 0;
   bool _isCameraControllerDisposed = false;
+  Timer? _timer;
 
   @override
   void initState() {
@@ -69,6 +70,7 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
     if (_cameraController != null && _cameraController!.value.isInitialized) {
       _cameraController!.dispose();
     }
+    _timer?.cancel();
     WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
   }
@@ -88,9 +90,12 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
         if (_cameraController != null &&
             _cameraController!.value.isInitialized) {
           _cameraController!.dispose();
-          setState(() {
-            _isCameraControllerDisposed = true;
-          });
+          _timer?.cancel();
+          if (mounted) {
+            setState(() {
+              _isCameraControllerDisposed = true;
+            });
+          }
         }
         break;
     }
@@ -164,16 +169,18 @@ class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
         const waitForSeconds = 2;
         const intervalMilliseconds = 10;
 
-        final timer = Timer.periodic(
+        _timer = Timer.periodic(
             const Duration(milliseconds: intervalMilliseconds), (timer) {
-          setState(() {
-            _progress = (DateTime.now().millisecondsSinceEpoch - start) /
-                (waitForSeconds * 1000);
-          });
+          if (mounted) {
+            setState(() {
+              _progress = (DateTime.now().millisecondsSinceEpoch - start) /
+                  (waitForSeconds * 1000);
+            });
+          }
         });
 
         await Future.delayed(const Duration(seconds: waitForSeconds));
-        timer.cancel();
+        _timer?.cancel();
         await _cameraController!.initialize();
         return Future.value(true);
       } catch (e) {
