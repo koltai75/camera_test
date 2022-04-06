@@ -38,20 +38,21 @@ class _MyHomePageState extends State<MyHomePage> {
             onPressed: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const MyCamera(),
+                  builder: (context) => const MyCameraPreview(),
                 )),
             child: const Text('Photo')),
       ));
 }
 
-class MyCamera extends StatefulWidget {
-  const MyCamera({Key? key}) : super(key: key);
+class MyCameraPreview extends StatefulWidget {
+  const MyCameraPreview({Key? key}) : super(key: key);
 
   @override
-  State<MyCamera> createState() => _MyCameraState();
+  State<MyCameraPreview> createState() => _MyCameraPreviewState();
 }
 
-class _MyCameraState extends State<MyCamera> with WidgetsBindingObserver {
+class _MyCameraPreviewState extends State<MyCameraPreview>
+    with WidgetsBindingObserver {
   late Future<bool> _initalizeCameraFuture;
   CameraController? _cameraController;
   double _progress = 0;
