@@ -40,7 +40,7 @@ class _MyHomePageState extends State<MyHomePage> {
                 MaterialPageRoute(
                   builder: (context) => const MyCameraPreview(),
                 )),
-            child: const Text('Photo')),
+            child: const Text('Start CameraPreview')),
       ));
 }
 
@@ -64,9 +64,9 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
 
   @override
   void initState() {
+    super.initState();
     _initalizeCameraFuture = _initializeCamera();
     WidgetsBinding.instance!.addObserver(this);
-    super.initState();
   }
 
   @override
@@ -75,7 +75,6 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
     if (_cameraController != null && _cameraController!.value.isInitialized) {
       _cameraController!.dispose();
     }
-
     _progressTimer?.cancel();
     WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
@@ -101,7 +100,7 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
         }
         // stop current progress timer
         _progressTimer?.cancel();
-        // this will disallow CameraPreview to use a disposed controller
+        // this will prevent CameraPreview using a disposed controller
         if (mounted) {
           setState(() {
             _isCameraControllerDisposed = true;
@@ -118,6 +117,8 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
           future: _initalizeCameraFuture,
           builder: (BuildContext context, AsyncSnapshot<bool> snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
+              // progress indicator while _initalizeCamera is running, its
+              // value is updated from a Timer.periodic in  _initalizeCamera
               return Center(
                   child: SizedBox(
                       width: 128,
@@ -128,6 +129,8 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
                       )));
             }
 
+            // status message depending on the result of _initializeCamera,
+            // non-empty means everything is ok
             var statusMessage = '';
 
             if (!snapshot.hasData) {
@@ -139,6 +142,7 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
               statusMessage = 'camera controller not initalized';
             }
 
+            // build CameraPreview in a Scaffold
             return Scaffold(
               appBar: AppBar(
                 title: const Text('Flutter Camera Test'),
@@ -164,37 +168,54 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
           });
 
   Future<bool> _initializeCamera() async {
-    if (!await Permission.camera.request().isGranted) {
-      return Future.value(false);
+    // current permission to use camera
+    final isGranted = await Permission.camera.isGranted;
+
+    // if no permission, we try to request it
+    if (!isGranted) {
+      // ask for user's permission
+      if (!await Permission.camera.request().isGranted) {
+        // initalization failed, permission not granted
+        return Future.value(false);
+      }
     }
 
+    // get available cameras
     final cameras = await availableCameras();
     if (cameras.isEmpty) {
+      // initalization failed, no cameras found
       return Future.value(false);
     }
     try {
+      // create controller
       _cameraController = CameraController(cameras[0], ResolutionPreset.high,
           enableAudio: false, imageFormatGroup: ImageFormatGroup.jpeg);
 
+      // setup a delay timer and progress for test purposes, camera controller
+      // will be initalized after the time specified here passed, and
+      // the progress indicator's value is updated in Timer.periodic
+      const waitForMilliseconds = 2000;
       final start = DateTime.now().millisecondsSinceEpoch;
-      const waitForSeconds = 2;
-      const intervalMilliseconds = 10;
 
-      _progressTimer = Timer.periodic(
-          const Duration(milliseconds: intervalMilliseconds), (timer) {
+      _progressTimer =
+          Timer.periodic(const Duration(milliseconds: 10), (timer) {
         if (mounted) {
           setState(() {
             _progress = (DateTime.now().millisecondsSinceEpoch - start) /
-                (waitForSeconds * 1000);
+                waitForMilliseconds;
           });
         }
       });
 
-      await Future.delayed(const Duration(seconds: waitForSeconds));
+      // delay and call initalize on camera controller after
+      await Future.delayed(const Duration(milliseconds: waitForMilliseconds));
       _progressTimer?.cancel();
       await _cameraController!.initialize();
+
+      // this indicates that the initalization was successful
       return Future.value(true);
     } catch (e) {
+      // initalization failed
       return Future.value(false);
     }
   }
