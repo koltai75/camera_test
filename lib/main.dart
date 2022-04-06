@@ -86,8 +86,8 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
       case AppLifecycleState.resumed:
         // if resumed, start again with _initalizeCamera
         setState(() {
-          _isCameraControllerDisposed = false;
           _initalizeCameraFuture = _initializeCamera();
+          _isCameraControllerDisposed = false;
         });
         break;
       case AppLifecycleState.inactive:
