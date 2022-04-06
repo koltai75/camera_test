@@ -53,11 +53,14 @@ class MyCameraPreview extends StatefulWidget {
 
 class _MyCameraPreviewState extends State<MyCameraPreview>
     with WidgetsBindingObserver {
-  late Future<bool> _initalizeCameraFuture;
+  // camera controller
   CameraController? _cameraController;
-  double _progress = 0;
+  late Future<bool> _initalizeCameraFuture;
   bool _isCameraControllerDisposed = false;
-  Timer? _timer;
+
+  // delay progress
+  double _progress = 0;
+  Timer? _progressTimer;
 
   @override
   void initState() {
@@ -68,10 +71,12 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
 
   @override
   void dispose() {
+    // dispose camera controller if it was initialized
     if (_cameraController != null && _cameraController!.value.isInitialized) {
       _cameraController!.dispose();
     }
-    _timer?.cancel();
+
+    _progressTimer?.cancel();
     WidgetsBinding.instance!.removeObserver(this);
     super.dispose();
   }
@@ -80,6 +85,7 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
   void didChangeAppLifecycleState(AppLifecycleState state) {
     switch (state) {
       case AppLifecycleState.resumed:
+        // if resumed, start again with _initalizeCamera
         setState(() {
           _isCameraControllerDisposed = false;
           _initalizeCameraFuture = _initializeCamera();
@@ -88,15 +94,18 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
       case AppLifecycleState.inactive:
       case AppLifecycleState.paused:
       case AppLifecycleState.detached:
+        // if camera controller is initalized, dispose it
         if (_cameraController != null &&
             _cameraController!.value.isInitialized) {
           _cameraController!.dispose();
-          _timer?.cancel();
-          if (mounted) {
-            setState(() {
-              _isCameraControllerDisposed = true;
-            });
-          }
+        }
+        // stop current progress timer
+        _progressTimer?.cancel();
+        // this will disallow CameraPreview to use a disposed controller
+        if (mounted) {
+          setState(() {
+            _isCameraControllerDisposed = true;
+          });
         }
         break;
     }
@@ -157,36 +166,36 @@ class _MyCameraPreviewState extends State<MyCameraPreview>
   Future<bool> _initializeCamera() async {
     if (!await Permission.camera.request().isGranted) {
       return Future.value(false);
-    } else {
-      final cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        return Future.value(false);
-      }
-      try {
-        _cameraController = CameraController(cameras[0], ResolutionPreset.high,
-            enableAudio: false, imageFormatGroup: ImageFormatGroup.jpeg);
+    }
 
-        final start = DateTime.now().millisecondsSinceEpoch;
-        const waitForSeconds = 2;
-        const intervalMilliseconds = 10;
+    final cameras = await availableCameras();
+    if (cameras.isEmpty) {
+      return Future.value(false);
+    }
+    try {
+      _cameraController = CameraController(cameras[0], ResolutionPreset.high,
+          enableAudio: false, imageFormatGroup: ImageFormatGroup.jpeg);
 
-        _timer = Timer.periodic(
-            const Duration(milliseconds: intervalMilliseconds), (timer) {
-          if (mounted) {
-            setState(() {
-              _progress = (DateTime.now().millisecondsSinceEpoch - start) /
-                  (waitForSeconds * 1000);
-            });
-          }
-        });
+      final start = DateTime.now().millisecondsSinceEpoch;
+      const waitForSeconds = 2;
+      const intervalMilliseconds = 10;
 
-        await Future.delayed(const Duration(seconds: waitForSeconds));
-        _timer?.cancel();
-        await _cameraController!.initialize();
-        return Future.value(true);
-      } catch (e) {
-        return Future.value(false);
-      }
+      _progressTimer = Timer.periodic(
+          const Duration(milliseconds: intervalMilliseconds), (timer) {
+        if (mounted) {
+          setState(() {
+            _progress = (DateTime.now().millisecondsSinceEpoch - start) /
+                (waitForSeconds * 1000);
+          });
+        }
+      });
+
+      await Future.delayed(const Duration(seconds: waitForSeconds));
+      _progressTimer?.cancel();
+      await _cameraController!.initialize();
+      return Future.value(true);
+    } catch (e) {
+      return Future.value(false);
     }
   }
 }
